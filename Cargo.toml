@@ -1,5 +1,5 @@
 [package]
-name = "jwt-secret-finder"
+name = "jwtc"
 version = "0.1.0"
 authors = ["Grant Miner"]
 edition = "2018"
