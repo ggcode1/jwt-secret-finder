@@ -81,22 +81,21 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
 
     let mut pool = Pool::new(num_cpus::get() as u32);
 
-    for length in 1..max_length {
-        println!("Checking secrets of length {}", length);
-        let mut current_index: Vec<String> = Vec::new();
+    pool.scoped(|scoped| {
+        for length in 1..max_length {
+            println!("Checking secrets of length {}", length);
+            let mut current_index: Vec<String> = Vec::new();
 
-        for existing_word in &index[length - 1] {
-            // println!("{:?}", existing_word);
+            for existing_word in &index[length - 1] {
+                // println!("{:?}", existing_word);
 
-            for character in alphabet {
-                let mut secret = existing_word.clone();
-                secret.push(*character as char);
-                current_index.push(secret.clone());
-                let secret = secret.as_bytes();
-
-                pool.scoped(|scoped| {
+                for character in alphabet {
+                    let mut secret = existing_word.clone();
+                    secret.push(*character as char);
+                    current_index.push(secret.clone());
+                    // let secret = secret.as_bytes();
                     scoped.execute(move || {
-                        let mut hmac = Hmac::new(Sha256::new(), secret);
+                        let mut hmac = Hmac::new(Sha256::new(), secret.as_bytes());
                         hmac.input(data_to_sign.as_bytes());
                         let mut raw = Vec::with_capacity(32);
                         raw.resize(32, 0); // sha256 produces 256bits, or 32 bytes.
@@ -108,16 +107,16 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
                         // println!("DBG Secret is: {}", secret);
 
                         if presented_signature == &raw {
-                            println!("Found! Created signature    : {} using the secret: {}", String::from_utf8_lossy(raw.as_slice()), String::from_utf8_lossy(secret));
+                            println!("Found! Created signature    : {} using the secret: {}", String::from_utf8_lossy(raw.as_slice()), secret);
                             exit(0);
                         }
                     });
-                });
+                };
             }
-        }
 
-        index.push(current_index);
-    }
+            index.push(current_index);
+        }
+    });
 
     index
 }
