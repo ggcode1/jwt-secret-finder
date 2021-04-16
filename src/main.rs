@@ -3,8 +3,8 @@ use std::process::exit;
 use crypto::hmac::Hmac;
 use crypto::sha2::Sha256;
 use crypto::mac::Mac;
-use threadpool::ThreadPool;
 use structopt::StructOpt;
+use scoped_threadpool::Pool;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "args", about = "arguments")]
@@ -63,6 +63,7 @@ fn main() {
 
 fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) -> Vec<Vec<String>> {
 
+    let presented_signature = presented_signature.as_slice();
     let alphabet = alphabet_str.as_bytes();
 
     let mut index: Vec<Vec<String>> = Vec::new(); // index[0] is words with length 1. index[1] is words with length 2. index[2] is words with length 3.
@@ -78,7 +79,7 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
     index.push(first_index);
     // println!("{:?}", index);
 
-    let pool = ThreadPool::new(num_cpus::get());
+    let mut pool = Pool::new(num_cpus::get() as u32);
 
     for length in 1..max_length {
         println!("Checking secrets of length {}", length);
@@ -87,41 +88,42 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
         for existing_word in &index[length - 1] {
             // println!("{:?}", existing_word);
 
-            for i in alphabet {
+            for character in alphabet {
                 let mut secret = existing_word.clone();
-                secret.push(*i as char);
-
+                secret.push(*character as char);
                 current_index.push(secret.clone());
+                let secret = secret.as_bytes();
 
-                let data_to_sign = data_to_sign.to_string();
-                let presented_signature = presented_signature.clone();
+                pool.scoped(|scoped| {
+                    scoped.execute(move || {
+                        let mut hmac = Hmac::new(Sha256::new(), secret);
+                        hmac.input(data_to_sign.as_bytes());
+                        let mut raw = Vec::with_capacity(32);
+                        raw.resize(32, 0); // sha256 produces 256bits, or 32 bytes.
+                        hmac.raw_result(raw.as_mut_slice());
 
-                pool.execute(move || {
-                    let mut hmac = Hmac::new(Sha256::new(), secret.as_bytes());
-                    hmac.input(data_to_sign.as_bytes());
-                    let mut raw = Vec::with_capacity(32);
-                    raw.resize(32, 0); // sha256 produces 256bits, or 32 bytes.
-                    hmac.raw_result(raw.as_mut_slice());
+                        // println!("Checking {}", String::from_utf8_lossy(raw.as_slice()));
+                        // println!("DBG Raw {:?}", raw);
+                        // println!("DBG Pre {:?}", String::from_utf8_lossy(presented_signature));
+                        // println!("DBG Secret is: {}", secret);
 
-                    // println!("Checking {}", String::from_utf8_lossy(raw.as_slice()));
-                    // println!("DBG Raw {:?}", raw);
-                    // println!("DBG Pre {:?}", String::from_utf8_lossy(presented_signature));
-                    // println!("DBG Secret is: {}", secret);
-
-                    if presented_signature == raw {
-                        println!("Found! Created signature    : {} using the secret: {}", String::from_utf8_lossy(raw.as_slice()), secret);
-                        exit(0);
-                    }
+                        if presented_signature == &raw {
+                            println!("Found! Created signature    : {} using the secret: {}", String::from_utf8_lossy(raw.as_slice()), String::from_utf8_lossy(secret));
+                            exit(0);
+                        }
+                    });
                 });
             }
         }
 
         index.push(current_index);
     }
+
     index
 }
 
 
+#[cfg(test)]
 mod test {
     use rustc_serialize::base64::{ToBase64, FromBase64, STANDARD};
     use super::get_words;

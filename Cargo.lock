@@ -150,7 +150,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "jwt-secret-finder"
+name = "jwtc"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -158,6 +158,7 @@ dependencies = [
  "num_cpus",
  "rust-crypto",
  "rustc-serialize",
+ "scoped_threadpool",
  "structopt",
  "structopt-derive",
  "threadpool",
@@ -384,6 +385,12 @@ name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
+
+[[package]]
+name = "scoped_threadpool"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d51f5df5af43ab3f1360b429fa5e0152ac5ce8c0bd6485cae490332e96846a8"
 
 [[package]]
 name = "serde"
