@@ -61,21 +61,18 @@ fn main() {
 }
 
 
-fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) -> Vec<Vec<String>> {
+fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) -> Vec<Vec<u8>> {
     let presented_signature = presented_signature.as_slice();
     let alphabet = alphabet_str.as_bytes();
     let data_to_sign = data_to_sign.as_bytes();
+    let alphabet_str = alphabet_str.as_bytes();
 
     // index[0] is words with length 1. index[1] is words with length 2. index[2] is words with length 3.
-    let mut index: Vec<Vec<String>> = Vec::new();
+    let mut index: Vec<Vec<u8>> = Vec::new();
 
-    // push the first vector, the vector of single-character alphabet strings
-    let mut first_index: Vec<String> = Vec::new();
-
-    for _ in alphabet_str.chars() {
-        first_index.push("".to_string());
+    for letter in alphabet_str {
+        index.push(vec![*letter]);
     }
-    index.push(first_index);
 
     let mut pool = Pool::new(num_cpus::get() as u32);
     let sha256 = Sha256::new();
@@ -83,28 +80,28 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
     pool.scoped(|scoped| {
         for length in 1..max_length {
             println!("Checking secrets of length {}", length);
-            let mut new_words: Vec<String> = Vec::new();
+            let mut new_words: Vec<Vec<u8>> = Vec::new();
 
-            for existing_word in index.pop().unwrap() {
+            for existing_word in &index {
                 for character in alphabet {
                     let mut secret = existing_word.clone();
-                    secret.push(*character as char);
+                    secret.push(*character);
                     new_words.push(secret.clone());
                     // let secret = secret.as_bytes();
                     scoped.execute(move || {
-                        let mut hmac = Hmac::new(sha256, secret.as_bytes());
+                        let mut hmac = Hmac::new(sha256, &secret);
                         hmac.input(data_to_sign);
 
                         if &presented_signature == &hmac.result().code() {
                             // println!("Found! Created signature    : {} using the secret: {}", String::from_utf8_lossy(raw.as_slice()), secret);
-                            println!("Found using the secret: {}", secret);
+                            println!("Found using the secret: {}", String::from_utf8_lossy(&secret.to_vec()));
                             exit(0);
                         }
                     });
                 };
             }
 
-            index.push(new_words);
+            index.append(&mut new_words);
         }
     });
 
