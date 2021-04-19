@@ -61,7 +61,7 @@ fn main() {
 }
 
 
-fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) -> Vec<Vec<u8>> {
+fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) {
     let presented_signature = presented_signature.as_slice();
     let alphabet = alphabet_str.as_bytes();
     let data_to_sign = data_to_sign.as_bytes();
@@ -82,7 +82,7 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
             println!("Checking secrets of length {}", length);
             let mut new_words: Vec<Vec<u8>> = Vec::new();
 
-            for existing_word in &index {
+            while let Some(existing_word) = index.pop() {
                 for character in alphabet {
                     let mut secret = existing_word.clone();
                     secret.push(*character);
@@ -101,11 +101,9 @@ fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8
                 };
             }
 
-            index.append(&mut new_words);
+            index = new_words;
         }
     });
-
-    index
 }
 
 
