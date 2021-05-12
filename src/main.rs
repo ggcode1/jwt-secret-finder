@@ -35,12 +35,12 @@ fn main() {
     println!("{:?}", parts);
 
     // Decode the signature
-    let presented_header: Vec<u8> =
-        parts[0].from_base64().expect("JWT header Base64 decoding failed");
-    let presented_payload: Vec<u8> =
-        parts[1].from_base64().expect("JWT payload Base64 decoding failed");
-    let presented_signature: Vec<u8> =
-        parts[2].from_base64().expect("JWT signature Base64 decoding failed");
+    let presented_header: &[u8] =
+        &parts[0].from_base64().expect("JWT header Base64 decoding failed");
+    let presented_payload: &[u8] =
+        &parts[1].from_base64().expect("JWT payload Base64 decoding failed");
+    let presented_signature: &[u8] =
+        &parts[2].from_base64().expect("JWT signature Base64 decoding failed");
 
     let mut message_to_encrypt = String::new();
     message_to_encrypt.push_str(&presented_header.clone().to_base64(STANDARD));
@@ -49,20 +49,19 @@ fn main() {
 
     println!();
     println!("Presented Header: {}",
-             String::from_utf8_lossy(presented_header.as_slice()));
+             String::from_utf8_lossy(presented_header));
     println!("Presented Payload: {}",
-             String::from_utf8_lossy(presented_payload.as_slice()));
+             String::from_utf8_lossy(presented_payload));
     println!("Presented Signature (len) {}: {}",
              presented_signature.len(),
-             String::from_utf8_lossy(presented_signature.as_slice()));
+             String::from_utf8_lossy(presented_signature));
     println!();
 
    get_words(&opt.alphabet, opt.max_length, &presented_signature, &message_to_encrypt);
 }
 
 
-fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &Vec<u8>, data_to_sign: &str) {
-    let presented_signature = presented_signature.as_slice();
+fn get_words(alphabet_str: &str, max_length: usize, presented_signature: &[u8], data_to_sign: &str) {
     let alphabet = alphabet_str.as_bytes();
     let data_to_sign = data_to_sign.as_bytes();
     let alphabet_str = alphabet_str.as_bytes();
